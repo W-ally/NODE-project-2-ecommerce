@@ -1,54 +1,147 @@
 const { body, validationResult } = require('express-validator');
 
-// Utils
 const { AppError } = require('../utils/appError.util');
 
-const checkValidations = (req, res, next) => {
-	const errors = validationResult(req);
+const checkResult = (req, res, next) => {
+  const errors = validationResult(req);
 
-	if (!errors.isEmpty()) {
-		// [{ ..., msg }] -> [msg, msg, ...] -> 'msg. msg. msg. msg'
-		const errorMessages = errors.array().map(err => err.msg);
+  if (!errors.isEmpty()) {
+    // Array has errors
+    const errorMsgs = errors.array().map((err) => err.msg);
 
-		const message = errorMessages.join('. ');
+    const message = errorMsgs.join('. ');
 
-		return next(new AppError(message, 400));
-	}
+    return next(new AppError(message, 400));
+  }
 
-	next();
+  next();
 };
 
 const createUserValidators = [
-	body('name')
-		.isString()
-		.withMessage('Name must be a string')
-		.notEmpty()
-		.withMessage('Name cannot be empty')
-		.isLength({ min: 3 })
-		.withMessage('Name must be at least 3 characters'),
-	body('email').isEmail().withMessage('Must provide a valid email'),
-	body('password')
-		.isString()
-		.withMessage('Password must be a string')
-		.notEmpty()
-		.withMessage('Password cannot be empty')
-		.isLength({ min: 8 })
-		.withMessage('Password must be at least 8 characters'),
-	checkValidations,
+  body('username')
+    .notEmpty()
+    .withMessage('Username cannot be empty')
+    .isString()
+    .withMessage('Username is not a string'),
+  body('email').isEmail().withMessage('Must provide a valid email'),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+    .isAlphanumeric()
+    .withMessage('Password must contain letters and numbers'),
+  body('role')
+    .notEmpty()
+    .withMessage('Role cannot be empty')
+    .isString()
+    .withMessage('Role is not a string'),
+  checkResult,
 ];
 
-const createPostValidators = [
-	body('title')
-		.isString()
-		.withMessage('Title must be a string')
-		.isLength({ min: 3 })
-		.withMessage('Title must be at least 3 characters'),
-	body('content')
-		.isString()
-		.withMessage('Content must be a string')
-		.isLength({ min: 3 })
-		.withMessage('Content must be at least 3 characters long'),
-	checkValidations,
+const createOrderValidators = [
+  body('userId')
+    .notEmpty()
+    .withMessage('userId cannot be empty')
+    .isNumeric()
+    .withMessage('userId is not a number'),
+  body('cartId')
+    .notEmpty()
+    .withMessage('cartId cannot be empty')
+    .isNumeric()
+    .withMessage('cartId is not a number'),
+  body('totalPrice')
+    .notEmpty()
+    .withMessage('totalPrice cannot be empty')
+    .isNumeric()
+    .withMessage('totalPrice is not a number'),
+  checkResult,
 ];
 
-module.exports = { createUserValidators, createPostValidators };
+const createProductValidators = [
+  body('title')
+    .notEmpty()
+    .withMessage('title cannot be empty')
+    .isString()
+    .withMessage('title is not a string'),
+  body('description')
+    .notEmpty()
+    .withMessage('description cannot be empty')
+    .isString()
+    .withMessage('description is not a string'),
+  body('quantity')
+    .notEmpty()
+    .withMessage('quantity cannot be empty')
+    .isNumeric()
+    .withMessage('quantity is not a number'),
+  body('price')
+    .notEmpty()
+    .withMessage('price cannot be empty')
+    .isNumeric()
+    .withMessage('price is not a number'),
+  body('categoryId')
+    .notEmpty()
+    .withMessage('categoryId cannot be empty')
+    .isNumeric()
+    .withMessage('categoryId is not a number'),
+  checkResult,
+];
+
+const createCartValidators = [
+  body('userId')
+    .notEmpty()
+    .withMessage('userId cannot be empty')
+    .isNumeric()
+    .withMessage('userId is not a number'),
+  checkResult,
+];
+
+const createCategoriesValidators = [
+  body('name')
+    .notEmpty()
+    .withMessage('name cannot be empty')
+    .isString()
+    .withMessage('name is not a string'),
+  checkResult,
+];
+
+const createProductsInCartValidators = [
+  body('cartId')
+    .notEmpty()
+    .withMessage('cartId cannot be empty')
+    .isNumeric()
+    .withMessage('cartId is not a number'),
+  body('productId')
+    .notEmpty()
+    .withMessage('productId cannot be empty')
+    .isNumeric()
+    .withMessage('productId is not a number'),
+  body('quantity')
+    .notEmpty()
+    .withMessage('quantity cannot be empty')
+    .isNumeric()
+    .withMessage('quantity is not a number'),
+  checkResult,
+];
+
+const createImgUrlValidators = [
+  body('imgUrl')
+    .notEmpty()
+    .withMessage('imgUrl cannot be empty')
+    .isString()
+    .withMessage('imgUrl is not a string'),
+  body('productId')
+    .notEmpty()
+    .withMessage('productId cannot be empty')
+    .isNumeric()
+    .withMessage('productId is not a number'),
+  checkResult,
+];
+
+module.exports = {
+  createUserValidators,
+  createOrderValidators,
+  createProductValidators,
+  createCartValidators,
+  createCategoriesValidators,
+  createProductsInCartValidators,
+  createImgUrlValidators,
+};

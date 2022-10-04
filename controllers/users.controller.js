@@ -4,134 +4,214 @@ const dotenv = require('dotenv');
 
 // Models
 const { User } = require('../models/user.model');
-const { Post } = require('../models/post.model');
-const { Comment } = require('../models/comment.model');
+const { Order } = require('../models/order.model');
+const { Product } = require('../models/product.model');
+const { Cart } = require('../models/cart.model');
+const { ProductInCart } = require('../models/productInCart.model');
+const { Category } = require('../models/category.model');
+const { ProductImg } = require('../models/productImg.model');
 
 // Utils
 const { catchAsync } = require('../utils/catchAsync.util');
 const { AppError } = require('../utils/appError.util');
+const { Email } = require('../utils/email.util');
 
 dotenv.config({ path: './config.env' });
 
-// Gen random jwt signs
-// require('crypto').randomBytes(64).toString('hex') -> Enter into the node console and paste the command
-
-const getAllUsers = catchAsync(async (req, res, next) => {
-	const users = await User.findAll({
-		attributes: { exclude: ['password'] },
-		where: { status: 'active' },
-		include: [
-			{
-				model: Post,
-				include: {
-					model: Comment,
-					include: { model: User },
-				},
-			},
-			{
-				model: Comment,
-			},
-		],
-	});
-
-	res.status(200).json({
-		status: 'success',
-		data: { users },
-	});
-});
-
 const createUser = catchAsync(async (req, res, next) => {
-	const { name, email, password, role } = req.body;
+  const { username, email, password, role } = req.body;
 
-	if (role !== 'admin' && role !== 'normal') {
-		return next(new AppError('Invalid role', 400));
-	}
+  // Hash password
+  const salt = await bcrypt.genSalt(12);
+  const hashPassword = await bcrypt.hash(password, salt);
 
-	// Encrypt the password
-	const salt = await bcrypt.genSalt(12);
-	const hashedPassword = await bcrypt.hash(password, salt);
+  const newUser = await User.create({
+    username: username,
+    email,
+    password: hashPassword,
+    role,
+  });
 
-	const newUser = await User.create({
-		name,
-		email,
-		password: hashedPassword,
-		role,
-	});
+  // Remove password from response
+  newUser.password = undefined;
 
-	// Remove password from response
-	newUser.password = undefined;
+  // Send welcome email
+	await new Email(email).sendWelcome(username);
 
-	// 201 -> Success and a resource has been created
-	res.status(201).json({
-		status: 'success',
-		data: { newUser },
-	});
-});
-
-const updateUser = catchAsync(async (req, res, next) => {
-	const { name } = req.body;
-	const { user } = req;
-
-	// Method 1: Update by using the model
-	// await User.update({ name }, { where: { id } });
-
-	// Method 2: Update using a model's instance
-	await user.update({ name });
-
-	res.status(200).json({
-		status: 'success',
-		data: { user },
-	});
-});
-
-const deleteUser = catchAsync(async (req, res, next) => {
-	const { user } = req;
-
-	// Method 1: Delete by using the model
-	// User.destroy({ where: { id } })
-
-	// Method 2: Delete by using the model's instance
-	// await user.destroy();
-
-	// Method 3: Soft delete
-	await user.update({ status: 'deleted' });
-
-	res.status(204).json({ status: 'success' });
+  res.status(201).json({
+    status: 'success',
+    newUser,
+  });
 });
 
 const login = catchAsync(async (req, res, next) => {
-	// Get email and password from req.body
-	const { email, password } = req.body;
+  const { email, password } = req.body;
 
-	// Validate if the user exist with given email
-	const user = await User.findOne({
-		where: { email, status: 'active' },
-	});
+  // Validate credentials (email)
+  const user = await User.findOne({
+    where: {
+      email,
+      status: 'active',
+    },
+  });
 
-	// Compare passwords (entered password vs db password)
-	// If user doesn't exists or passwords doesn't match, send error
-	if (!user || !(await bcrypt.compare(password, user.password))) {
-		return next(new AppError('Wrong credentials', 400));
-	}
+  if (!user) {
+    return next(new AppError('Credentials invalid', 400));
+  }
 
-	// Remove password from response
-	user.password = undefined;
+  // Validate password
+  const isPasswordValid = await bcrypt.compare(password, user.password);
 
-	// Generate JWT (payload, secretOrPrivateKey, options)
-	const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-		expiresIn: '30d',
-	});
+  if (!isPasswordValid) {
+    return next(new AppError('Credentials invalid', 400));
+  }
 
-	res.status(200).json({
-		status: 'success',
-		data: { user, token },
-	});
+  // Generate JWT (JsonWebToken) ->
+  const token = await jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+    expiresIn: '30d',
+  });
+
+  // Send response
+  res.status(200).json({
+    status: 'success',
+    token,
+  });
+});
+
+const getAllUsers = catchAsync(async (req, res, next) => {
+  const { sessionUser } = req
+  const role = sessionUser.role
+
+  if(role === 'admin'){
+
+    const users = await User.findAll({
+      attributes: ['id', 'username', 'email', 'status', 'role'],
+    });
+    
+    res.status(201).json({
+      status: 'success',
+      users,
+    });
+  } else {
+    return next(new AppError('Admin permission required', 400));
+  }
+});
+
+const updateUser = catchAsync(async (req, res, next) => {
+  const { user } = req;
+  const { username, email } = req.body;
+
+  await user.update({ username, email });
+
+  res.status(201).json({ status: 'success', user });
+});
+
+const deleteUser = catchAsync(async (req, res, next) => {
+  const { user } = req;
+
+  await user.update({ status: 'inactive' });
+
+  res.status(201).json({ status: 'success', user });
+});
+
+const getAllProductsMe = catchAsync(async (req, res, next) => {
+  const { sessionUser } = req;
+  
+  const product = await Product.findAll({
+    where: { userId: sessionUser.id },
+    attributes: ['id', 'title', 'description', 'price', 'quantity', 'categoryId', 'userId', 'status'],
+    include: [
+      {
+        model: Category,
+        required: false,
+        where: { status: 'active' },
+        attributes: ['id', 'name', 'status']
+      },
+      {
+        model: ProductImg,
+        required: false,
+        where: { status: 'active' },
+        attributes: ['id', 'imgUrl', 'productId', 'status']
+      }
+    ]
+  })
+
+  if(product === undefined) {
+    return next(new AppError('This user not has products', 400));
+  } else {
+    res.status(201).json({
+      status: 'success',
+      product,
+    });
+  }
+});
+
+const getAllShoppingMe = catchAsync(async (req, res, next) => {
+  const { sessionUser } = req;
+  const order = await Order.findAll({
+    where: { status: 'active', id: sessionUser.id },
+    attributes: ['id', 'userId', 'cartId', 'totalPrice', 'status'],
+    include: [
+      {
+        model: Cart,
+        required: false,
+        where: { status: 'active' },
+        attributes: ['id', 'userId', 'status'],
+        include: [
+          {
+            model: ProductInCart,
+            required: false,
+            where: { status: 'purchased' },
+            attributes: ['id', 'cartId', 'productId', 'quantity', 'status']
+          }
+        ]
+      }
+    ]
+  })
+
+  res.status(201).json({
+    status: 'success',
+    order,
+  });
+});
+
+const getOrderById = catchAsync(async (req, res, next) => {
+  const { order } = req;
+
+  const orderId = await Order.findOne({
+    where: { status: 'active', id: order.id},
+    attributes: ['id', 'userId', 'cartId', 'totalPrice', 'status'],
+    include: [
+      {
+        model: Cart,
+        required: false,
+        where: { status: 'active' },
+        attributes: ['id', 'userId', 'status'],
+        include: [
+          {
+            model: ProductInCart,
+            required: false,
+            where: { status: 'purchased' },
+            attributes: ['id', 'cartId', 'productId', 'quantity', 'status']
+          }
+        ]
+      }
+    ]
+  })
+
+  res.status(201).json({
+    status: 'success',
+    orderId,
+  });
 });
 
 module.exports = {
-	getAllUsers,
-	createUser,
-	updateUser,
-	deleteUser,
-	login,
+  createUser,
+  login,
+  getAllUsers,
+  updateUser,
+  deleteUser,
+  getAllProductsMe,
+  getAllShoppingMe,
+  getOrderById,
 };
