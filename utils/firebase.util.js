@@ -7,7 +7,8 @@ const {
 } = require('firebase/storage');
 
 // Model
-const { PostImg } = require('../models/postImg.model');
+const { ProductImg } = require('../models/productImg.model');
+
 
 const dotenv = require('dotenv');
 
@@ -25,48 +26,48 @@ const firebaseApp = initializeApp(firebaseConfig);
 // Storage service
 const storage = getStorage(firebaseApp);
 
-const uploadPostImgs = async (imgs, postId) => {
+const uploadProductImgs = async (imgs, postId) => {
 	// Map async -> Async operations with arrays
 	const imgsPromises = imgs.map(async img => {
 		// Create firebase reference
 		const [originalName, ext] = img.originalname.split('.'); // -> [pug, jpg]
 
-		const filename = `posts/${postId}/${originalName}-${Date.now()}.${ext}`;
+		const filename = `products/${postId}/${originalName}-${Date.now()}.${ext}`;
 		const imgRef = ref(storage, filename);
 
 		// Upload image to Firebase
 		const result = await uploadBytes(imgRef, img.buffer);
 
-		await PostImg.create({
-			postId,
-			imgUrl: result.metadata.fullPath,
+		await ProductImg.create({
+			productId: newProduct.id,
+			imgUrl: result.metadata.fullPath
 		});
 	});
 
 	await Promise.all(imgsPromises);
 };
 
-const getPostsImgsUrls = async posts => {
-	// Loop through posts to get to the postImgs
-	const postsWithImgsPromises = posts.map(async post => {
+const getProductImgsUrls = async products => {
+	// Loop through products to get to the productsImgs
+	const productWithImgsPromises = products.map(async product => {
 		// Get imgs URLs
-		const postImgsPromises = post.postImgs.map(async postImg => {
-			const imgRef = ref(storage, postImg.imgUrl);
+		const productImgsPromises = product.productImgs.map(async productImg => {
+			const imgRef = ref(storage, productImg.imgUrl);
 			const imgUrl = await getDownloadURL(imgRef);
 
-			postImg.imgUrl = imgUrl;
-			return postImg;
+			productImg.imgUrl = imgUrl;
+			return productImg;
 		});
 
 		// Resolve imgs urls
-		const postImgs = await Promise.all(postImgsPromises);
+		const productImgs = await Promise.all(productImgsPromises);
 
 		// Update old postImgs array with new array
-		post.postImgs = postImgs;
-		return post;
-	});
+		product.productImgs = productImgs;
+		return product;
+});
 
-	return await Promise.all(postsWithImgsPromises);
+return await Promise.all(productWithImgsPromises);
 };
 
-module.exports = { storage, uploadPostImgs, getPostsImgsUrls };
+module.exports = { storage, uploadProductImgs, getProductImgsUrls };
