@@ -16,13 +16,14 @@ const {
 const {
   createCategoriesValidators,
   createProductValidators,
-} = require('../middlewares/validators.middleware');
+} = require('../middlewares/validators.middlewares');
 const { productExists } = require('../middlewares/products.middleware');
 const { categoryExists } = require('../middlewares/categories.middleware');
-const { protectSession } = require('../middlewares/auth.middleware');
+const { protectSession } = require('../middlewares/auth.middlewares');
 
 // Utils
-const { upload } = require('../utils/upload.util');
+const { upload } = require('../utils/multer.util');
+
 
 const productsRouter = express.Router();
 

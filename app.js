@@ -5,8 +5,8 @@ const morgan = require('morgan');
 
 // Routers
 const { usersRouter } = require('./routes/users.routes');
-const { postsRouter } = require('./routes/posts.routes');
-const { commentsRouter } = require('./routes/comments.routes');
+const { productsRouter } = require('./routes/products.routes');
+const { cartsRouter } = require('./routes/carts.routes');
 
 // Controllers
 const { globalErrorHandler } = require('./controllers/error.controller');

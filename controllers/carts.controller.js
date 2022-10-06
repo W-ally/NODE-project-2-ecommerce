@@ -6,7 +6,7 @@ const { ProductInCart } = require('../models/productInCart.model');
 // Utils
 const { catchAsync } = require('../utils/catchAsync.util');
 const { AppError } = require('../utils/appError.util');
-const { Email } = require('../utils/email.util');
+
 
 const getUserCart = catchAsync(async (req, res, next) => {
   const { sessionUser } = req;

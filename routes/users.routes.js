@@ -15,15 +15,15 @@ const {
 // Middlewares
 const {
   createUserValidators,
-} = require('../middlewares/validators.middleware');
+} = require('../middlewares/validators.middlewares');
 
-const { userExists } = require('../middlewares/users.middleware');
+const { userExists } = require('../middlewares/users.middlewares');
 const { orderExists } = require('../middlewares/orders.middleware');
 
 const {
   protectSession,
-  protectUserAccount,
-} = require('../middlewares/auth.middleware');
+  protectUsersAccount,
+} = require('../middlewares/auth.middlewares');
 
 const usersRouter = express.Router();
 
@@ -42,9 +42,9 @@ usersRouter.get('/orders', getAllShoppingMe);
 usersRouter.get('/orders/:id', orderExists, getOrderById);
 
 usersRouter
-  .use('/:id', userExists)
-  .route('/:id')
-  .patch(protectUserAccount, updateUser)
-  .delete(protectUserAccount, deleteUser);
+.use('/:id', userExists)
+.route('/:id')
+.patch(protectUsersAccount, updateUser)
+.delete(protectUsersAccount, deleteUser);
 
 module.exports = { usersRouter };

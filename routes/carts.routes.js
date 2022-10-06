@@ -13,7 +13,7 @@ const {
 const { cartExists } = require('../middlewares/carts.middleware');
 const { productExists } = require('../middlewares/products.middleware');
 
-const { protectSession } = require('../middlewares/auth.middleware');
+const { protectSession } = require('../middlewares/auth.middlewares');
 
 const cartsRouter = express.Router();
 
